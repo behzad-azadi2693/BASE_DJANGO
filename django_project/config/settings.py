@@ -35,7 +35,7 @@ DEBUG =  os.getenv('DEBUG') == 'True'
 if DEBUG:   
     ALLOWED_HOSTS = ['*', 'localhost', '127.0.0.1']
 else:
-    ALLOWED_HOSTS = [os.getenv('WEB_DOMAIN'), f'www.{os.getenv('WEB_DOMAIN')}', 'web']
+    ALLOWED_HOSTS = [os.getenv('WEB_DOMAIN'), f"www.{os.getenv('WEB_DOMAIN')}", 'web']
 
 
 # Application definition
