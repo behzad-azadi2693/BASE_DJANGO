@@ -1,0 +1,9 @@
+venv/
+env/
+__pycache__/
+00*
+db*
+.git
+media/
+data/
+static/

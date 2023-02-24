@@ -1,0 +1,71 @@
+version: '3.9'
+
+services:
+  postgres:
+    image: ${DB_IMAGE}
+    hostname: ${DB_HOST}
+    container_name: postgres
+    command: -p ${DB_PORT}
+    restart: on-failure
+    environment: 
+      - POSTGRES_DB=${DB_NAME}
+      - POSTGRES_USER=${DB_USER}
+      - POSTGRES_PASSWORD=${DB_PASSWORD}
+    networks: 
+      - ${NETWORK}
+    expose:
+      - ${DB_PORT}
+    ports: 
+      - ${DB_PORT}:${DB_PORT}
+    volumes: 
+      - ./data/postgres:/var/lib/postgresql/data 
+
+  web:
+    build: .
+    hostname: web
+    container_name: web
+    restart: on-failure
+    command: sh -c "python3 django_project/manage.py makemigrations && 
+                    python3 django_project/manage.py migrate --no-input && 
+                    python3 django_project/manage.py collectstatic --no-input && 
+                    uwsgi --ini uwsgi.ini"
+                    #gunicorn -k gevent --chdir django_project django_project.config.wsgi:application -b 0.0.0.0:8000"
+    depends_on: 
+      - postgres
+    expose: 
+      - "8000"
+    networks:
+      - ${NETWORK}
+    volumes: 
+      - .:/web/
+      - ./media:/web/media
+      - ./static:/web/static
+
+  nginx:
+    image: nginx
+    hostname: nginx
+    container_name: nginx
+    command: nginx -g 'daemon off;'
+    restart: on-failure
+    depends_on:
+      - ${NETWORK}
+    networks: 
+      - main
+    expose:
+      - "80"
+    ports: 
+      - "80:80"
+    volumes: 
+      - ./nginx.conf:/etc/nginx/nginx.conf
+      - ./media:/web/media
+      - ./static:/web/static
+
+
+networks:
+  ${NETWORK}:
+
+
+volumes:
+  static:
+  media:
+  data:
