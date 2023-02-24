@@ -1,0 +1,18 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}
+    404 ERROR
+{% endblock %}
+
+{% block body %}
+<div class="gtco-section gto-features">
+    <div class="gtco-container">
+        <div class="row">    
+            <div class='col-md-12 text-center'>
+                <img src="{% static '/404.png' %}" style='width: 80%;' alt="404 ERROR">
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

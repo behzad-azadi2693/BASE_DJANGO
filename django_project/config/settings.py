@@ -50,7 +50,9 @@ BASE_APPS = [
 ]
 
 LOCAL_APP = [
-    'accounts.apps.AccountsConfig',
+    #'core.apps.CoreConfig',
+    #'accounts.apps.AccountsConfig',
+    #'api.apps.ApiConfig',
 ]
     
 PACK_APP = [
