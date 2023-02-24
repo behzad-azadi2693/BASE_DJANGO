@@ -35,7 +35,7 @@ DEBUG =  os.getenv('DEBUG') == 'True'
 if DEBUG:   
     ALLOWED_HOSTS = ['*', 'localhost', '127.0.0.1']
 else:
-    ALLOWED_HOSTS = ['', 'www.', 'web']
+    ALLOWED_HOSTS = [os.getenv('WEB_DOMAIN'), f'www.{os.getenv('WEB_DOMAIN')}', 'web']
 
 
 # Application definition
@@ -49,17 +49,17 @@ BASE_APPS = [
     'django.contrib.staticfiles',
 ]
 
-LOCAL_APP = [
+LOCAL_APPS = [
     #'core.apps.CoreConfig',
     #'accounts.apps.AccountsConfig',
     #'api.apps.ApiConfig',
 ]
     
-PACK_APP = [
+PACK_APPS = [
     'rest_framework',
 ]
 
-INSTALLED_APPS = [*BASE_APPS, *LOCAL_APP, *PACK_APP]
+INSTALLED_APPS = [*BASE_APPS, *LOCAL_APPS, *PACK_APPS]
 
 
 MIDDLEWARE = [
