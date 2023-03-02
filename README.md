@@ -8,7 +8,7 @@ run in local for develop:
     DEBUG=True
     WEB_DOMAIN=localhost
 
-run in local for develop:
+run in local for test:
     DEBUG=False
     WEB_DOMAIN=localhost
 ```
@@ -19,7 +19,7 @@ run in local for develop:
 
 # DOCKER
 ```
-### install docker and docker-compose
+install docker and docker-compose
 
 sudo docker-compose up -d
 
