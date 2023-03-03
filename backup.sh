@@ -10,3 +10,4 @@ sudo docker exec -i postgres /usr/bin/pg_dump -U $DB_USER $DB_NAME > postgres-ba
 
 python ../django_project/manage.py dumpdata --indent 4 > postgres-backup-$time.json
 
+python ../django_project/manage.py backup_to_csv
