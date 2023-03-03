@@ -53,12 +53,13 @@ LOCAL_APPS = [
     'utils.apps.UtilsConfig',
     #'core.apps.CoreConfig',
     #'accounts.apps.AccountsConfig',
-    #'api.apps.ApiConfig',
+    'api.apps.ApiConfig',
 ]
     
 PACK_APPS = [
     'rest_framework',
     'debug_toolbar',
+    'drf_spectacular',
 ]
 
 INSTALLED_APPS = [*BASE_APPS, *LOCAL_APPS, *PACK_APPS]
@@ -157,20 +158,40 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/4.1/howto/static-files/
 
 STATIC_URL = 'static/'
+
 STATIC_ROOT = os.path.join(BASE_DIR, 'static')
+
 STATICFILES_DIRS = [
     os.path.join(BASE_DIR, 'assets'),
 ]
 
+# Media files
 
 MEDIA_URL  = os.path.join(BASE_DIR, 'media/')
+
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media') 
+
 # Default primary key field type
 # https://docs.djangoproject.com/en/4.1/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
+#this for djdt
 
 INTERNAL_IPS = [
     "127.0.0.1",
 ]
+
+REST_FRAMEWORK = {
+    # your schema drf-spectacular
+    'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
+}
+
+# your schema drf-spectacular
+
+SPECTACULAR_SETTINGS = {
+    'TITLE': f'{os.getenv("PROJECT_NAME")} API',
+    'DESCRIPTION': 'schema swagger for api testing and mangement',
+    'VERSION': '1.0.0',
+    'SERVE_INCLUDE_SCHEMA': False,
+}
