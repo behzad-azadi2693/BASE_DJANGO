@@ -41,11 +41,12 @@ services:
     hostname: web
     container_name: web
     restart: on-failure
-    command: sh -c "python3 django_project/manage.py makemigrations && 
-                    python3 django_project/manage.py migrate --no-input && 
-                    python3 django_project/manage.py collectstatic --no-input && 
+    command: sh -c "python3 ${PROJECT_NAME}/manage.py makemigrations && 
+                    python3 ${PROJECT_NAME}/manage.py migrate --no-input && 
+                    python3 ${PROJECT_NAME}/manage.py collectstatic --no-input && 
+                    export $(cat .env | xargs) &&
                     uwsgi --ini uwsgi.ini"
-                    #gunicorn -k gevent --chdir django_project django_project.config.wsgi:application -b 0.0.0.0:8000"
+                    #gunicorn -k gevent --chdir ${PROJECT_NAME} ${PROJECT_NAME}.config.wsgi:application -b 0.0.0.0:8000"
     depends_on: 
       - postgres
     expose: 
@@ -54,14 +55,15 @@ services:
       - main
     volumes: 
       - .:/web/
-      - ./django_project/media:/web/django_project/media
-      - ./django_project/static:/web/django_project/static
+      - ./${PROJECT_NAME}/media:/web/${PROJECT_NAME}/media
+      - ./${PROJECT_NAME}/static:/web/${PROJECT_NAME}/static
 
   nginx:
     image: nginx
     hostname: nginx
     container_name: nginx
-    command: nginx -g 'daemon off;'
+    command: sh -c "nginx -g 'daemon off;' &&
+                    export $(cat .env | xargs)"
     restart: on-failure
     depends_on:
       - web
@@ -73,14 +75,12 @@ services:
       - "80:80"
     volumes: 
       - ./nginx.conf:/etc/nginx/nginx.conf
-      - ./django_project/media:/web/django_project/media
-      - ./django_project/static:/web/django_project/static
+      - ./${PROJECT_NAME}/media:/web/${PROJECT_NAME}/media
+      - ./${PROJECT_NAME}/static:/web/${PROJECT_NAME}/static
 
 
 networks:
   main:
 
 volumes:
-  static:
-  media:
   data:

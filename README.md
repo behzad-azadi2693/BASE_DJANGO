@@ -1,3 +1,9 @@
+# BASE
+```
+change name directory django_project to Favorite name and 
+change PROJECT_NAME in .env file to this Favorite name
+```
+
 # .env
 ```
 run in server:
