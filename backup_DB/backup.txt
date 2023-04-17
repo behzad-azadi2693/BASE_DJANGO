@@ -32,3 +32,4 @@ python manage.py loaddata db.json
 
 <-------------- backup DataBase to sqlfile in container -------------->
 docker exec -i postgres /usr/bin/pg_dump -U [postgresql_user] [postgresql_database] > ./backup_DB/postgres-backup1.sql 
+docker exec -it <container_name> pg_dump -U <username> <database_name> > <backup_file_name>.sql
