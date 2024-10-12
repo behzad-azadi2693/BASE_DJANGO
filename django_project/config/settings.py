@@ -12,7 +12,9 @@ https://docs.djangoproject.com/en/4.1/ref/settings/
 
 import os
 from pathlib import Path
-from dotenv import load_dotenv
+from datetime import timedelta
+from decouple import config
+from decouple import Config, RepositoryEnv
 
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
@@ -20,24 +22,28 @@ ROOT_DIR = Path(__file__).resolve().parent.parent.parent
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 #load .env
-dotenv_path = os.path.join(ROOT_DIR, '.env')
-load_dotenv(dotenv_path)
+config = Config(RepositoryEnv(os.path.join(ROOT_DIR, '.env')))
+
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/4.1/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY =  os.getenv('SECRET_KEY')
+SECRET_KEY = config('SECRET_KEY', cast=str)
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG =  os.getenv('DEBUG') == 'True'
+DEBUG = config('DEBUG', cast=bool)
 
 if DEBUG:   
     ALLOWED_HOSTS = ['*', 'localhost', '127.0.0.1']
 else:
-    ALLOWED_HOSTS = [os.getenv('WEB_DOMAIN'), f"www.{os.getenv('WEB_DOMAIN')}", 'web']
+    ALLOWED_HOSTS = ['http://localhost', 'web', config('BACKEND_DOMAIN', cast=str)]
 
-
+CSRF_TRUSTED_ORIGINS = [
+        'http://127.0.0.1', 'http://localhost', 
+        f"https://{config('BACKEND_DOMAIN', cast=str)}", f"http://{config('BACKEND_DOMAIN', cast=str)}",
+        f"https://www.{config('BACKEND_DOMAIN', cast=str)}", f"http://www.{config('BACKEND_DOMAIN', cast=str)}",
+    ]
 # Application definition
 
 BASE_APPS = [
@@ -58,8 +64,10 @@ LOCAL_APPS = [
     
 PACK_APPS = [
     'rest_framework',
-    'debug_toolbar',
+    'rest_framework_simplejwt',
+    #'debug_toolbar',
     'drf_spectacular',
+    'corsheaders',
 ]
 
 INSTALLED_APPS = [*BASE_APPS, *LOCAL_APPS, *PACK_APPS]
@@ -74,6 +82,7 @@ MIDDLEWARE = [
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
     'debug_toolbar.middleware.DebugToolbarMiddleware',
+    'corsheaders.middleware.CorsMiddleware',
 ]
 
 ROOT_URLCONF = 'config.urls'
@@ -103,23 +112,19 @@ WSGI_APPLICATION = 'config.wsgi.application'
 if DEBUG:
     DATABASES = {
         'default': {
-            'ENGINE': os.getenv('DB_ENGINE'),
-            'NAME': os.getenv('DB_NAME'),
-            'USER': os.getenv('DB_USER'),
-            'PASSWORD': os.getenv('DB_PASSWORD'),
-            'HOST': 'localhost',
-            'PORT': os.getenv('DB_PORT'),
+            'ENGINE': 'django.db.backends.sqlite3',
+            'NAME': BASE_DIR / 'db.sqlite3',
         }
     }
 else:
     DATABASES = {
         'default': {
-            'ENGINE': os.getenv('DB_ENGINE'),
-            'NAME': os.getenv('DB_NAME'),
-            'USER': os.getenv('DB_USER'),
-            'PASSWORD': os.getenv('DB_PASSWORD'),
-            'HOST': os.getenv('DB_HOST'),
-            'PORT': os.getenv('DB_PORT'),
+            'ENGINE': 'django.db.backends.postgresql_psycopg2',
+            'NAME': config('POSTGRES_NAME'),
+            'USER': config('POSTGRES_USER'),
+            'PASSWORD': config('POSTGRES_PASSWORD'),
+            'HOST': config('POSTGRES_HOST'),
+            'PORT': config('POSTGRES_PORT'),
         }
     }
 
@@ -182,16 +187,84 @@ INTERNAL_IPS = [
     "127.0.0.1",
 ]
 
+#RESTFRAMEWORK configure
 REST_FRAMEWORK = {
-    # your schema drf-spectacular
+    'DEFAULT_AUTHENTICATION_CLASSES': [
+        'rest_framework_simplejwt.authentication.JWTAuthentication',
+        'rest_framework.authentication.SessionAuthentication',
+    ],
     'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
 }
 
-# your schema drf-spectacular
 
+SIMPLE_JWT = {
+    'ACCESS_TOKEN_LIFETIME': timedelta(days=5),     # Change this to the desired lifetime for the access token
+    'REFRESH_TOKEN_LIFETIME': timedelta(days=31),   # Change this to the desired lifetime for the refresh token
+    'ROTATE_REFRESH_TOKENS': False,                 # Whether to issue a new refresh token when the refresh token is used
+    'BLACKLIST_AFTER_ROTATION': True,               # Whether to blacklist old refresh tokens after rotation
+    'UPDATE_LAST_LOGIN': False,                     # Whether to update the last login time when the token is refreshed
+}
+
+
+# your schema drf-spectacular
 SPECTACULAR_SETTINGS = {
-    'TITLE': f'{os.getenv("PROJECT_NAME")} API',
-    'DESCRIPTION': 'schema swagger for api testing and mangement',
-    'VERSION': '1.0.0',
-    'SERVE_INCLUDE_SCHEMA': False,
+    'SCHEMA_PATH_PREFIX': r'/api/v1',
+    'DEFAULT_GENERATOR_CLASS': 'drf_spectacular.generators.SchemaGenerator',
+    'SERVE_PERMISSIONS': ['rest_framework.permissions.AllowAny'],
+    'COMPONENT_SPLIT_PATCH': True,
+    'COMPONENT_SPLIT_REQUEST': True,
+    "SWAGGER_UI_SETTINGS": {
+        "deepLinking": True,
+        "persistAuthorization": True,
+        "displayOperationId": True,
+        "displayRequestDuration": True
+    },
+    'UPLOADED_FILES_USE_URL': True,
+    'TITLE': 'BASE DJANGO project Service API',
+    'DESCRIPTION': 'Handling user manage endpoint Api',
+    'VERSION': '0.2.0',
+    'LICENCE': {'name': 'BSD License'},
+    'CONTACT': {'name': 'behzad-azadi', 'url': 'https://github.com/behzad-azadi2693'},
+    #keycloak SPEC
+    'SECURITY': [{
+        'name': 'Bearer',
+        'scheme': 'bearer',
+        'bearerFormat': 'JWT',
+    }],
+}
+
+
+#CORS settings
+if DEBUG:
+    CORS_ORIGIN_ALLOW_ALL = True
+else:
+    CORS_ALLOWED_ORIGIN_REGEXES = [
+         rf"http:\/\/(\w+\.)?{config('CORS_ALLOWED_ORIGINS')}$",
+        rf"https:\/\/(\w+\.)?{config('CORS_ALLOWED_ORIGINS')}$",
+        rf"^https:\/\/(\w+\.)?{config('BACKEND_DOMAIN')}$",
+        rf"^http:\/\/(\w+\.)?{config('BACKEND_DOMAIN')}$"
+        ]
+
+CORS_ALLOW_METHODS = ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS']
+CORS_ALLOW_HEADERS = ['Content-Type', 'Authorization', 'accept', 'user-agent', 'x-csrftoken', 'x-requested-with']
+CORS_ALLOW_CREDENTIALS = True
+
+
+
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'handlers': {
+        'console': {
+            'level': 'DEBUG',
+            'class': 'logging.StreamHandler',
+        },
+    },
+    'loggers': {
+        'user_manage': {
+            'handlers': ['console'],
+            'level': 'DEBUG',
+            'propagate': True,
+        },
+    },
 }

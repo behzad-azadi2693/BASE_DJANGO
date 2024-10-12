@@ -2,21 +2,23 @@ version: '3.9'
 
 services:
   postgres:
-    image: ${DB_IMAGE}
-    hostname: ${DB_HOST}
+    image: ${POSTGRES_IMAGE}
+    hostname: ${POSTGRES_HOST}
     container_name: postgres
     command: -p ${DB_PORT}
     restart: on-failure
     environment: 
-      - POSTGRES_DB=${DB_NAME}
-      - POSTGRES_USER=${DB_USER}
-      - POSTGRES_PASSWORD=${DB_PASSWORD}
+      - POSTGRES_DB=${POSTGRES_NAME}
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+    env_file:
+      - .env
     networks: 
-      - main
+      - network_web_main
     expose:
-      - ${DB_PORT}
+      - ${POSTGRES_PORT}
     ports: 
-      - ${DB_PORT}:${DB_PORT}
+      - ${POSTGRES_PORT}:${POSTGRES_PORT}
     volumes: 
       - ./data/postgres:/var/lib/postgresql/data
       - /etc/timezone:/etc/timezone:ro
@@ -34,7 +36,7 @@ services:
     ports:
       - "5050:80"
     networks: 
-      - main
+      - network_web_main
     volumes: 
       - /data/pgadmin:/var/lib/pgadmin/data
       - /etc/timezone:/etc/timezone:ro
@@ -53,10 +55,14 @@ services:
                     #gunicorn -k gevent --chdir ${PROJECT_NAME} ${PROJECT_NAME}.config.wsgi:application -b 0.0.0.0:8000"
     depends_on: 
       - postgres
+    env_file:
+      - .env
     expose: 
-      - "8000"
+      - ${DJANGO_PORT}
+    ports:
+      - ${DJANGO_PORT}:${DJANGO_PORT}   
     networks:
-      - main
+      - network_web_main
     volumes: 
       - .:/web/
       - ./${PROJECT_NAME}/media:/web/${PROJECT_NAME}/media
@@ -73,8 +79,10 @@ services:
     restart: on-failure
     depends_on:
       - web
+    env_file:
+      - .env
     networks: 
-      - main
+      - network_web_main
     expose:
       - "80"
     ports: 
@@ -88,7 +96,7 @@ services:
 
 
 networks:
-  main:
+  network_web_main:
 
 volumes:
   data:
