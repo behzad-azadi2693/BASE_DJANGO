@@ -42,7 +42,7 @@ else:
 CSRF_TRUSTED_ORIGINS = [
         'http://127.0.0.1', 'http://localhost', 
         f"https://{config('BACKEND_DOMAIN', cast=str)}", f"http://{config('BACKEND_DOMAIN', cast=str)}",
-        f"https://www.{config('BACKEND_DOMAIN', cast=str)}", f"http://www.{config('BACKEND_DOMAIN', cast=str)}",
+        config('BACKEND_DOMAIN', cast=str), config('CI_REGISTRY_IMAGE', cast=str)
     ]
 # Application definition
 
