@@ -11,8 +11,6 @@ services:
       - POSTGRES_DB=${POSTGRES_NAME}
       - POSTGRES_USER=${POSTGRES_USER}
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
-    env_file:
-      - .env
     networks: 
       - network_web_main
     expose:
@@ -44,8 +42,9 @@ services:
 
   web:
     build: .
-    hostname: web
-    container_name: web
+    image: ${CI_REGISTRY_NAME}:${IMAGE_VERSION}
+    container_name: ${CI_REGISTRY_NAME}
+    hostname: ${CI_REGISTRY_NAME}
     restart: on-failure
     command: sh -c "python3 ${PROJECT_NAME}/manage.py makemigrations && 
                     python3 ${PROJECT_NAME}/manage.py migrate --no-input && 
@@ -55,8 +54,6 @@ services:
                     #gunicorn -k gevent --chdir ${PROJECT_NAME} ${PROJECT_NAME}.config.wsgi:application -b 0.0.0.0:8000"
     depends_on: 
       - postgres
-    env_file:
-      - .env
     expose: 
       - ${DJANGO_PORT}
     ports:
