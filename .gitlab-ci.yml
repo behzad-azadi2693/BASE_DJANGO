@@ -1,0 +1,112 @@
+stages:
+  - stage_build
+  - stage_test
+  - stage_push
+  - stage_develop
+  - stage_deploy
+  - stage_new_release
+
+
+befor_script:
+  - docker compose up -d postgres nginx pgadmin
+  - docker login -u "$CI_REGISTRY_USER" -p "$CI_REGISTRY_PASSWORRD" "$CI_REGISTRY"
+
+
+build_job:
+  stage: stage_build
+  tags: runner-test
+  environment:
+    name: server-test
+  script:
+    - docker build --tag "$CI_REGISTRY_NAME:$IMAGE_VERSION" .
+  only:
+    - main
+    - develop
+    - tags
+    - merge_request
+    
+
+test_job:
+  stage: stage_test
+  tags: runner-test
+  environment:
+    name: server-test
+  script: 
+    - docker compose run web python manage.py test
+  only:
+    - main
+    - develop
+    - tags
+    - merge_request
+
+
+push_job:
+  stage: stage_push
+  tags: runner-test
+  environment:
+    name: server-test
+  rules:
+    - if: '$CI_COMMIT_BRANCH == "develop" || $CI_COMMIT_BRANCH == "main"'
+      when: always
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && ($CI_MERGE_REQUEST_TARGET_BRANCH_NAME == "develop" || $CI_MERGE_REQUEST_TARGET_BRANCH_NAME == "main")'
+      when: always
+    - if: '$CI_COMMIT_TAG'
+      when: always
+  script: 
+    - docker push "$CI_REGISTRY_IMAGE:$IMAGE_VERSION"
+
+
+develop_job:
+  stage: stage_develop
+  tags: runner-develop
+  environment:
+    name: server-develop
+  variables:
+    DEBUG: "True"
+  rules:
+    - if: '$CI_COMMIT_BRANCH == "develop"'
+      when: always
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME == "develop"'
+      when: always
+  script:
+    - docker compose pull web
+    - docker compose down web
+    - docker compose up -d
+
+
+deploy_job:
+  stage: stage_deploy
+  tags: runner-deploy
+  when: manual
+  environment:
+    name: server-deploy
+  rules:
+    - if: '$CI_COMMIT_BRANCH == "main"'
+      when: always
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME == "main"'
+      when: always
+  script:
+    - docker compose pull web
+    - docker compose down web
+    - docker compose up -d
+
+
+new_release:
+  stage: stage_new_release
+  tags: runner-deploy
+  environment:
+    name: server-deploy
+  script:
+    - docker compose pull web
+    - docker compose down web
+    - docker compose up -d
+  rules:
+    - if: "$CI_COMMIT_TAG"
+      when: always
+  release:
+    tag_name: "$CI_COMMIT_TAG"
+    description: "Release for $CI_COMMIT_TAG"
+
+
+after_script:
+  - docker logout
