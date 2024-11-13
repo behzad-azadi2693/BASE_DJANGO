@@ -7,18 +7,35 @@ stages:
   - stage_new_release
 
 
-befor_script:
-  - docker compose up -d postgres nginx pgadmin
-  - docker login -u "$CI_REGISTRY_USER" -p "$CI_REGISTRY_PASSWORRD" "$CI_REGISTRY"
+
+before_script:
+  - echo "PROJECT_NAME=$PROJECT_NAME" >> .env
+  - echo "POSTGRES_HOST=$POSTGRES_HOST" >> .env
+  - echo "POSTGRES_PORT=$POSTGRES_PORT" >> .env
+  - echo "POSTGRES_NAME=$POSTGRES_NAME" >> .env
+  - echo "POSTGRES_USER=$POSTGRES_USER" >> .env
+  - echo "POSTGRES_PASSWORD=$POSTGRES_PASSWORD" >> .env
+  - echo "DEBUG=$DEBUG" >> .env
+  - echo "SECRET_KEY=$SECRET_KEY" >> .env
+  - echo "DJANGO_PORT=$DJANGO_PORT" >> .env
+  - echo "BACKEND_DOMAIN=$BACKEND_DOMAIN" >> .env
+  - echo "CORS_ALLOWED_ORIGINS=$CORS_ALLOWED_ORIGINS" >> .env
+  - echo "IMAGE_VERSION=$IMAGE_VERSION" >> .env
+  - echo "CI_REGISTRY_IMAGE=$CI_REGISTRY_IMAGE" >> .env
+  - echo "PGADMIN_EMAIL=$PGADMIN_EMAIL" >> .env
+  - echo "PGADMIN_PASSWORD=$PGADMIN_PASSWORD" >> .env
+  - sudo docker compose up -d postgres
+  - sudo docker pull python:3.10
+  - echo "$CI_REGISTRY_PASSWORD" | sudo docker login -u "$CI_REGISTRY_USER" --password-stdin "$CI_REGISTRY"
 
 
 build_job:
   stage: stage_build
-  tags: runner-test
+  tags: ["runner-test"]
   environment:
     name: server-test
   script:
-    - docker build --tag "$CI_REGISTRY_NAME:$IMAGE_VERSION" .
+    - sudo docker build --tag "$CI_REGISTRY_IMAGE:$IMAGE_VERSION" . --no-cache
   only:
     - main
     - develop
@@ -28,11 +45,15 @@ build_job:
 
 test_job:
   stage: stage_test
-  tags: runner-test
+  tags: ["runner-test"]
+  dependencies:
+    - "build_job"
   environment:
     name: server-test
-  script: 
-    - docker compose run web python manage.py test
+  script:
+    - sudo docker compose run web python manage.py makemigrations
+    - sudo docker compose run web python manage.py migrate  
+    - sudo docker compose run web python manage.py test
   only:
     - main
     - develop
@@ -42,7 +63,9 @@ test_job:
 
 push_job:
   stage: stage_push
-  tags: runner-test
+  tags: ["runner-test"]
+  dependencies:
+    - "test_job"
   environment:
     name: server-test
   rules:
@@ -53,12 +76,14 @@ push_job:
     - if: '$CI_COMMIT_TAG'
       when: always
   script: 
-    - docker push "$CI_REGISTRY_IMAGE:$IMAGE_VERSION"
+    - sudo docker push "$CI_REGISTRY_IMAGE:$IMAGE_VERSION"
 
 
 develop_job:
   stage: stage_develop
-  tags: runner-develop
+  tags: ["runner-develop"]
+  dependencies:
+    - "push_job"
   environment:
     name: server-develop
   variables:
@@ -69,14 +94,16 @@ develop_job:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME == "develop"'
       when: always
   script:
-    - docker compose pull web
-    - docker compose down web
-    - docker compose up -d
+    - sudo docker compose pull web
+    - sudo docker compose down web
+    - sudo docker compose up -d
 
 
 deploy_job:
   stage: stage_deploy
-  tags: runner-deploy
+  tags: ["runner-deploy"]
+  dependencies:
+    - "push_job"
   when: manual
   environment:
     name: server-deploy
@@ -86,20 +113,22 @@ deploy_job:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME == "main"'
       when: always
   script:
-    - docker compose pull web
-    - docker compose down web
-    - docker compose up -d
+    - sudo docker compose pull web
+    - sudo docker compose down web
+    - sudo docker compose up -d
 
 
 new_release:
   stage: stage_new_release
-  tags: runner-deploy
+  tags: ["runner-deploy"]
+  dependencies:
+    - "push_job"
   environment:
     name: server-deploy
   script:
-    - docker compose pull web
-    - docker compose down web
-    - docker compose up -d
+    - sudo docker compose pull web
+    - sudo docker compose down web
+    - sudo docker compose up -d
   rules:
     - if: "$CI_COMMIT_TAG"
       when: always
@@ -109,4 +138,5 @@ new_release:
 
 
 after_script:
-  - docker logout
+  - sudo docker logout
+  - sudo docker compose down -v
