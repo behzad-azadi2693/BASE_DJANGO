@@ -1,0 +1,101 @@
+version: '3.9'
+
+services:
+  postgres:
+    image: ${POSTGRES_IMAGE}
+    hostname: ${POSTGRES_HOST}
+    container_name: postgres
+    command: -p ${DB_PORT}
+    restart: on-failure
+    environment: 
+      - POSTGRES_DB=${POSTGRES_NAME}
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+    networks: 
+      - network_web_main
+    expose:
+      - ${POSTGRES_PORT}
+    ports: 
+      - ${POSTGRES_PORT}:${POSTGRES_PORT}
+    volumes: 
+      - ./data/postgres:/var/lib/postgresql/data
+      - /etc/timezone:/etc/timezone:ro
+      - /etc/localtime:/etc/localtime:ro
+      
+  pgadmin:
+    image: dpage/pgadmin4
+    container_name: pgadmin
+    restart: on-failure
+    environment:
+      - PGADMIN_DEFAULT_EMAIL=${PGADMIN_EMAIL}
+      - PGADMIN_DEFAULT_PASSWORD=${PGADMIN_PASSWORD}
+    depends_on:
+      - postgres
+    ports:
+      - "5050:80"
+    networks: 
+      - network_web_main
+    volumes: 
+      - /data/pgadmin:/var/lib/pgadmin/data
+      - /etc/timezone:/etc/timezone:ro
+      - /etc/localtime:/etc/localtime:ro
+
+  web:
+    build:
+      context: ..
+      dockerfile: ./docker/Dockerfile
+    image: ${CI_REGISTRY_IMAGE}:${IMAGE_VERSION}
+    container_name: ${CI_REGISTRY_IMAGE}
+    hostname: ${CI_REGISTRY_IMAGE}
+    restart: on-failure
+    command: sh -c "python3 ${PROJECT_NAME}/manage.py makemigrations && 
+                    python3 ${PROJECT_NAME}/manage.py migrate --no-input && 
+                    python3 ${PROJECT_NAME}/manage.py collectstatic --no-input && 
+                    export $(cat .env | xargs) &&
+                    uwsgi --ini uwsgi.ini"
+                    #gunicorn -k gevent --chdir ${PROJECT_NAME} ${PROJECT_NAME}.config.wsgi:application -b 0.0.0.0:8000"
+    depends_on: 
+      - postgres
+    expose: 
+      - ${DJANGO_PORT}
+    ports:
+      - ${DJANGO_PORT}:${DJANGO_PORT}   
+    networks:
+      - network_web_main
+    volumes: 
+      - ..:/web/
+      - ./${PROJECT_NAME}/media:/web/${PROJECT_NAME}/media
+      - ./${PROJECT_NAME}/static:/web/${PROJECT_NAME}/static
+      - /etc/timezone:/etc/timezone:ro
+      - /etc/localtime:/etc/localtime:ro
+
+  nginx:
+    image: nginx
+    hostname: nginx
+    container_name: nginx
+    command: sh -c "nginx -g 'daemon off;' &&
+                    export $(cat .env | xargs)"
+    restart: on-failure
+    depends_on:
+      - web
+    env_file:
+      - .env
+    networks: 
+      - network_web_main
+    expose:
+      - "80"
+    ports: 
+      - "80:80"
+    volumes: 
+      - ./nginx.conf:/etc/nginx/nginx.conf
+      - ./${PROJECT_NAME}/media:/web/${PROJECT_NAME}/media
+      - ./${PROJECT_NAME}/static:/web/${PROJECT_NAME}/static
+      - /etc/timezone:/etc/timezone:ro
+      - /etc/localtime:/etc/localtime:ro
+
+
+networks:
+  network_web_main:
+
+volumes:
+  data:
