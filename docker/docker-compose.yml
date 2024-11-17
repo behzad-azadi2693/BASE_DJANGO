@@ -1,0 +1,23 @@
+
+services:
+  web:
+    build:
+      context: ..
+      dockerfile: ./docker/Dockerfile
+    image: "${CI_REGISTRY_IMAGE}:${IMAGE_VERSION}"
+    container_name: "${CI_REGISTRY_IMAGE}"
+    hostname: "${CI_REGISTRY_IMAGE}"
+    restart: on-failure
+    command: sh -c "ls -a && pwd && python3 manage.py makemigrations && 
+                    python3 manage.py migrate --no-input && 
+                    python3 manage.py collectstatic --no-input && 
+                    gunicorn -k gevent --workers 4 config.wsgi:application -b 0.0.0.0:${DJANGO_PORT}"
+    ports:
+      - ${DJANGO_PORT}:${DJANGO_PORT}
+    volumes:
+      - ..:/web
+    networks:
+      - web_network_test
+
+networks:
+  web_network_test:
