@@ -21,9 +21,6 @@ before_script:
   - echo "CORS_ALLOWED_ORIGINS=$CORS_ALLOWED_ORIGINS" >> .env
   - echo "IMAGE_VERSION=$IMAGE_VERSION" >> .env
   - echo "CI_REGISTRY_IMAGE=$CI_REGISTRY_IMAGE" >> .env
-  - sudo docker compose up -d postgres
-  #- sudo docker pull python:3.10
-  - echo "$CI_REGISTRY_PASSWORD" | sudo docker login -u "$CI_REGISTRY_USER" --password-stdin "$CI_REGISTRY"
 
 
 build_job:
@@ -32,7 +29,8 @@ build_job:
   environment:
     name: server-test
   script:
-    - sudo docker build --tag "$CI_REGISTRY_IMAGE:$IMAGE_VERSION" . --no-cache
+    - cd docker
+    - sudo docker compose --env-file ../.env build --no-cache web
   only:
     - main
     - develop
@@ -48,9 +46,15 @@ test_job:
   environment:
     name: server-test
   script:
-    - sudo docker compose run web python manage.py makemigrations
-    - sudo docker compose run web python manage.py migrate  
-    - sudo docker compose run web python manage.py test
+    - sudo cat .env
+    - cd docker
+    - sudo docker compose --file docker-compose-postgres.yml --env-file ../.env up -d postgres
+    - sudo docker compose --env-file ../.env run web python manage.py makemigrations
+    - sudo docker compose --env-file ../.env run web python manage.py migrate  
+    - sudo docker compose --env-file ../.env run web python manage.py test
+  after_script:
+    - cd docker
+    - sudo docker compose --file docker-compose-postgres.yml down -v
   only:
     - main
     - develop
@@ -72,9 +76,11 @@ push_job:
       when: always
     - if: '$CI_COMMIT_TAG'
       when: always
+  before_script:
+      - echo "$CI_REGISTRY_PASSWORD" | sudo docker login -u "$CI_REGISTRY_USER" --password-stdin "$CI_REGISTRY"
   script: 
-    - sudo docker tag "$CI_REGISTRY_IMAGE:$IMAGE_VERSION" "${CI_REGISTRY}:5050/${CI_PROJECT_PATH}:${IMAGE_VERSION}"
-    - sudo docker push "${CI_REGISTRY}:5050/${CI_PROJECT_PATH}:${IMAGE_VERSION}"
+    - sudo docker tag "$CI_REGISTRY_IMAGE:$IMAGE_VERSION" "${CI_REGISTRY}:5050/${CI_PROJECT_NAME}:${IMAGE_VERSION}"
+    - sudo docker push "${CI_REGISTRY}:5050/${CI_PROJECT_NAME}:${IMAGE_VERSION}"
 
 
 develop_job:
@@ -92,10 +98,13 @@ develop_job:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME == "develop"'
       when: always
   script:
-    - sudo docker compose pull "${CI_REGISTRY}:5050/${CI_PROJECT_PATH}:${IMAGE_VERSION}"
-    - sudo docker tag "${CI_REGISTRY}:5050/${CI_PROJECT_PATH}:${IMAGE_VERSION}" "$CI_REGISTRY_IMAGE:$IMAGE_VERSION"
+    - cd docker
+    - sudo docker compose --file docker-compose-postgres.yml --env-file ../.env up -d postgres
+    - echo "$CI_REGISTRY_PASSWORD" | sudo docker login -u "$CI_REGISTRY_USER" --password-stdin "$CI_REGISTRY"
+    - sudo docker pull "${CI_REGISTRY}:5050/${CI_PROJECT_NAME}:${IMAGE_VERSION}"
+    - sudo docker tag "${CI_REGISTRY}:5050/${CI_PROJECT_NAME}:${IMAGE_VERSION}" "$CI_REGISTRY_IMAGE:$IMAGE_VERSION"
     - sudo docker compose down web
-    - sudo docker compose up -d
+    - sudo docker compose --env-file ../.env  up -d
 
 
 deploy_job:
@@ -111,11 +120,14 @@ deploy_job:
       when: always
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME == "main"'
       when: always
+  before_script:
+    - echo "$CI_REGISTRY_PASSWORD" | sudo docker login -u "$CI_REGISTRY_USER" --password-stdin "$CI_REGISTRY"
   script:
-    - sudo docker compose pull "${CI_REGISTRY}:5050/${CI_PROJECT_PATH}:${IMAGE_VERSION}"
-    - sudo docker tag "${CI_REGISTRY}:5050/${CI_PROJECT_PATH}:${IMAGE_VERSION}" "$CI_REGISTRY_IMAGE:$IMAGE_VERSION"
+    - cd docker
+    - sudo docker pull "${CI_REGISTRY}:5050/${CI_PROJECT_NAME}:${IMAGE_VERSION}"
+    - sudo docker tag "${CI_REGISTRY}:5050/${CI_PROJECT_NAME}:${IMAGE_VERSION}" "$CI_REGISTRY_IMAGE:$IMAGE_VERSION"
     - sudo docker compose down web
-    - sudo docker compose up -d
+    - sudo docker compose --env-file ../.env up -d
 
 
 new_release:
@@ -125,11 +137,14 @@ new_release:
     - "push_job"
   environment:
     name: server-deploy
+  before_script:
+    - echo "$CI_REGISTRY_PASSWORD" | sudo docker login -u "$CI_REGISTRY_USER" --password-stdin "$CI_REGISTRY"
   script:
-    - sudo docker compose pull "${CI_REGISTRY}:5050/${CI_PROJECT_PATH}:${IMAGE_VERSION}"
-    - sudo docker tag "${CI_REGISTRY}:5050/${CI_PROJECT_PATH}:${IMAGE_VERSION}" "$CI_REGISTRY_IMAGE:$IMAGE_VERSION"
+    - cd docker
+    - sudo docker pull "${CI_REGISTRY}:5050/${CI_PROJECT_NAME}:${IMAGE_VERSION}"
+    - sudo docker tag "${CI_REGISTRY}:5050/${CI_PROJECT_NAME}:${IMAGE_VERSION}" "$CI_REGISTRY_IMAGE:$IMAGE_VERSION"
     - sudo docker compose down web
-    - sudo docker compose up -d
+    - sudo docker compose --env-file ../.env up -d
   rules:
     - if: "$CI_COMMIT_TAG"
       when: always
@@ -140,5 +155,3 @@ new_release:
 
 after_script:
   - sudo docker logout
-  - sudo docker compose down -v
-
