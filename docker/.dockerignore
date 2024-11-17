@@ -1,0 +1,15 @@
+venv/
+env/
+__pycache__/
+db*
+.git
+media/
+data/
+.idea/
+.venv
+files.sql
+query.sql
+tasks.txt
+static/
+00*
+.ipynb*
