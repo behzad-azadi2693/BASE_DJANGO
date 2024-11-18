@@ -43,6 +43,8 @@ test_job:
   tags: ["runner-test"]
   dependencies:
     - "build_job"
+  needs:
+    - job: build_job
   environment:
     name: server-test
   script:
@@ -67,6 +69,8 @@ push_job:
   tags: ["runner-test"]
   dependencies:
     - "test_job"
+  needs:
+    - job: test_job
   environment:
     name: server-test
   rules:
@@ -88,6 +92,9 @@ develop_job:
   tags: ["runner-develop"]
   dependencies:
     - "push_job"
+  needs:
+    - job: push_job
+    - job: test_job
   environment:
     name: server-develop
   variables:
@@ -112,6 +119,10 @@ deploy_job:
   tags: ["runner-deploy"]
   dependencies:
     - "push_job"
+    - "develop_job"
+  needs:
+    - job: push_job
+    - job: develop_job
   when: manual
   environment:
     name: server-deploy
@@ -137,6 +148,9 @@ new_release:
     - "push_job"
   environment:
     name: server-deploy
+  needs:
+    - job: test_job
+    - job: push_job
   before_script:
     - echo "$CI_REGISTRY_PASSWORD" | sudo docker login -u "$CI_REGISTRY_USER" --password-stdin "$CI_REGISTRY"
   script:
@@ -155,3 +169,4 @@ new_release:
 
 after_script:
   - sudo docker logout
+
