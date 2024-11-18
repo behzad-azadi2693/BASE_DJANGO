@@ -88,7 +88,7 @@ push_job:
 
 
 develop_job:
-  stage: stage_develop
+  stage: stage_develop  # Ensure this stage is before deploy
   tags: ["runner-develop"]
   dependencies:
     - "push_job"
@@ -115,14 +115,12 @@ develop_job:
 
 
 deploy_job:
-  stage: stage_deploy
+  stage: stage_deploy  # Deploy is now after develop
   tags: ["runner-deploy"]
   dependencies:
     - "push_job"
-    - "develop_job"
   needs:
     - job: push_job
-    - job: develop_job
   when: manual
   environment:
     name: server-deploy
