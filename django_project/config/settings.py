@@ -272,7 +272,7 @@ LOGGING = {
 
 
 #SSL secure for MITM
-SECURE_SSL_REDIRECT = config('DEBUG', cast=bool)
+SECURE_SSL_REDIRECT = not config('DEBUG', cast=bool)
 if SECURE_SSL_REDIRECT:
     USE_X_FORWARDED_HOST = True
     SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')    
