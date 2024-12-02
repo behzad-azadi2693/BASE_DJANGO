@@ -268,3 +268,28 @@ LOGGING = {
         },
     },
 }
+
+
+#SSL secure for MITM
+SECURE_SSL_REDIRECT = config('DEBUG', cast=bool)
+if SECURE_SSL_REDIRECT:
+    USE_X_FORWARDED_HOST = True
+    SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')    
+    SECURE_HSTS_SECONDS = 31536000  # 1 year
+    SECURE_HSTS_INCLUDE_SUBDOMAINS = True
+    SECURE_HSTS_PRELOAD = True
+    SECURE_BROWSER_XSS_FILTER = True
+    SECURE_CONTENT_TYPE_NOSNIFF = True
+
+
+# Example CSP Directives
+CSP_DEFAULT_SRC = ["'self'"]    # Restrict everything to the same origin
+CSP_SCRIPT_SRC = ["'self'", "'nonce'"]     # JavaScript sources
+CSP_STYLE_SRC = ["'self'", "'nonce'"]      # CSS sources
+CSP_IMG_SRC = ["'self'"]        # Image sources
+CSP_FONT_SRC = ["'self'"]       # Font sources
+CSP_CONNECT_SRC = ["'self'"]    # AJAX, WebSocket
+CSP_FRAME_SRC = ["'self'"]      # Frames (e.g., YouTube)
+CSP_OBJECT_SRC = ["'none'"]     # Block all plugins
+CSP_BASE_URI = ["'self'"]       # Restrict <base> tag
+CSP_FORM_ACTION = ["'self'"]  
