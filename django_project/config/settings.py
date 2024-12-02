@@ -294,3 +294,10 @@ CSP_FRAME_SRC = ["'self'"]      # Frames (e.g., YouTube)
 CSP_OBJECT_SRC = ["'none'"]     # Block all plugins
 CSP_BASE_URI = ["'self'"]       # Restrict <base> tag
 CSP_FORM_ACTION = ["'self'"]  
+
+#add another resource for get data safe
+CSP_SCRIPT_SRC += ["'unsafe-inline'", "'unsafe-eval'", "https://cdn.jsdelivr.net", "https://unpkg.com"]
+CSP_STYLE_SRC += ["'unsafe-inline'", "https://cdn.jsdelivr.net", "https://unpkg.com"]
+CSP_IMG_SRC += ["data:"]
+CSP_CONNECT_SRC += [f"https://{config('BACKEND_DOMAIN', cast=str)}", "https://*."]  # Allow Swagger API connections
+CSP_CONNECT_SRC += [f"https://{config('CORS_ALLOWED_ORIGINS', cast=str)}"]  # Replace with your actual domain if applicable
