@@ -6,6 +6,15 @@ change PROJECT_NAME in .env file to this Favorite name
 
 ***
 
+# settings 
+```
+reading this link and in the settings config CSP favorite your site
+
+[Link Text] (https://www.digitalocean.com/community/tutorials/how-to-secure-your-django-application-with-a-content-security-policy)
+```
+
+***
+
 # .env
 ```
 run in server:
