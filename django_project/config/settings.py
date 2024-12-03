@@ -68,6 +68,8 @@ PACK_APPS = [
     #'debug_toolbar',
     'drf_spectacular',
     'corsheaders',
+    'oauth2_provider',
+    'spectacular',
 ]
 
 INSTALLED_APPS = [*BASE_APPS, *LOCAL_APPS, *PACK_APPS]
@@ -191,6 +193,7 @@ INTERNAL_IPS = [
 #RESTFRAMEWORK configure
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': [
+        'oauth2_provider.contrib.rest_framework.OAuth2Authentication',
         'rest_framework_simplejwt.authentication.JWTAuthentication',
         'rest_framework.authentication.SessionAuthentication',
     ],
@@ -301,3 +304,15 @@ CSP_STYLE_SRC += ["'unsafe-inline'", "https://cdn.jsdelivr.net", "https://unpkg.
 CSP_IMG_SRC += ["data:"]
 CSP_CONNECT_SRC += [f"https://{config('BACKEND_DOMAIN', cast=str)}", "https://*."]  # Allow Swagger API connections
 CSP_CONNECT_SRC += [f"https://{config('CORS_ALLOWED_ORIGINS', cast=str)}"]  # Replace with your actual domain if applicable
+
+
+CACHES = {
+    "default": {
+        "BACKEND": "django_redis.cache.RedisCache",
+        "LOCATION": f"redis://{config('REDIS_HOST')}:{config('REDIS_PORT', cast=int)}/1",
+        'OPTIONS': {
+            'PASSWORD': config('REDIS_PASSWORD'),
+            'CLIENT_CLASS': 'django_redis.client.DefaultClient',
+        }
+    }
+}
