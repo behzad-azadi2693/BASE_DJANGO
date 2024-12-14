@@ -37,15 +37,24 @@ DEBUG = config('DEBUG', cast=bool)
 if DEBUG:   
     ALLOWED_HOSTS = ['*', 'localhost', '127.0.0.1']
 else:
-    ALLOWED_HOSTS = ['http://localhost', 'web', config('BACKEND_DOMAIN', cast=str)]
-
-CSRF_TRUSTED_ORIGINS = [
-        'http://127.0.0.1', 'http://localhost', 
-        f"https://{config('BACKEND_DOMAIN', cast=str)}", f"http://{config('BACKEND_DOMAIN', cast=str)}",
-        config('BACKEND_DOMAIN', cast=str), config('CI_REGISTRY_IMAGE', cast=str)
+    ALLOWED_HOSTS = [
+        config("CORS_ALLOWED_ORIGINS", cast=str),
+        config('BACKEND_DOMAIN', cast=str),
+        config('CONTAINER_HOSTNAME', cast=str, default=''),
+        "localhost",
+        "127.0.0.1",
     ]
-# Application definition
+    
+CSRF_TRUSTED_ORIGINS = [
+    'http://127.0.0.1', 
+    'http://localhost',
+    f"https://{config('BACKEND_DOMAIN', cast=str)}", 
+    f"http://{config('BACKEND_DOMAIN', cast=str)}",
+    f"https://www.{config('BACKEND_DOMAIN', cast=str)}", 
+    f"http://www.{config('BACKEND_DOMAIN', cast=str)}",
+]
 
+# Application definition
 BASE_APPS = [
     'django.contrib.admin',
     'django.contrib.auth',
