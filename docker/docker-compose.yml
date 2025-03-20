@@ -14,6 +14,11 @@ services:
                     gunicorn -k gevent --workers 4 config.wsgi:application -b 0.0.0.0:${DJANGO_PORT}"
     ports:
       - ${DJANGO_PORT}:${DJANGO_PORT}
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:${DJANGO_PORT}/"]
+      interval: 300s
+      timeout: 10s
+      retries: 3
     volumes:
       - ..:/web
     networks:
