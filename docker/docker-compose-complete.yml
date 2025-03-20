@@ -5,34 +5,45 @@ services:
     image: ${POSTGRES_IMAGE}
     hostname: ${POSTGRES_HOST}
     container_name: postgres
-    command: -p ${DB_PORT}
+    command: -p ${POSTGRES_PORT}
     restart: on-failure
     environment: 
-      - POSTGRES_DB=${POSTGRES_NAME}
-      - POSTGRES_USER=${POSTGRES_USER}
-      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_NAME}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
     networks: 
       - network_web_main
     expose:
-      - ${POSTGRES_PORT}
+      - "${POSTGRES_PORT}"
     ports: 
-      - ${POSTGRES_PORT}:${POSTGRES_PORT}
+      - "${POSTGRES_PORT}:${POSTGRES_PORT}"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_NAME}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
     volumes: 
       - ./data/postgres:/var/lib/postgresql/data
       - /etc/timezone:/etc/timezone:ro
       - /etc/localtime:/etc/localtime:ro
-      
+
   pgadmin:
     image: dpage/pgadmin4
     container_name: pgadmin
     restart: on-failure
     environment:
-      - PGADMIN_DEFAULT_EMAIL=${PGADMIN_EMAIL}
-      - PGADMIN_DEFAULT_PASSWORD=${PGADMIN_PASSWORD}
+      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_EMAIL}
+      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_PASSWORD}
     depends_on:
-      - postgres
+      postgres:
+        condition: service_healthy
     ports:
       - "5050:80"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost/login"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
     networks: 
       - network_web_main
     volumes: 
@@ -45,21 +56,28 @@ services:
       context: ..
       dockerfile: ./docker/Dockerfile
     image: ${CI_REGISTRY_IMAGE}:${IMAGE_VERSION}
-    container_name: ${CI_REGISTRY_IMAGE}
-    hostname: ${CI_REGISTRY_IMAGE}
+    container_name: web
+    hostname: web
     restart: on-failure
-    command: sh -c "python3 ${PROJECT_NAME}/manage.py makemigrations && 
-                    python3 ${PROJECT_NAME}/manage.py migrate --no-input && 
-                    python3 ${PROJECT_NAME}/manage.py collectstatic --no-input && 
-                    export $(cat .env | xargs) &&
-                    uwsgi --ini uwsgi.ini"
-                    #gunicorn -k gevent --chdir ${PROJECT_NAME} ${PROJECT_NAME}.config.wsgi:application -b 0.0.0.0:8000"
+    command: >
+      sh -c "python3 ${PROJECT_NAME}/manage.py makemigrations &&
+             python3 ${PROJECT_NAME}/manage.py migrate --no-input &&
+             python3 ${PROJECT_NAME}/manage.py collectstatic --no-input &&
+             export $(cat .env | xargs) &&
+             uwsgi --ini uwsgi.ini"
+             #gunicorn -k gevent --chdir ${PROJECT_NAME} ${PROJECT_NAME}.config.wsgi:application -b 0.0.0.0:8000"
     depends_on: 
-      - postgres
+      postgres:
+        condition: service_healthy
     expose: 
-      - ${DJANGO_PORT}
+      - "${DJANGO_PORT}"
     ports:
-      - ${DJANGO_PORT}:${DJANGO_PORT}   
+      - "${DJANGO_PORT}:${DJANGO_PORT}"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:${DJANGO_PORT}/"]
+      interval: 10s
+      timeout: 10s
+      retries: 3
     networks:
       - network_web_main
     volumes: 
@@ -73,11 +91,13 @@ services:
     image: nginx
     hostname: nginx
     container_name: nginx
-    command: sh -c "nginx -g 'daemon off;' &&
-                    export $(cat .env | xargs)"
+    command: >
+      sh -c "nginx -g 'daemon off;' &&
+             export $(cat .env | xargs)"
     restart: on-failure
     depends_on:
-      - web
+      web:
+        condition: service_healthy
     env_file:
       - .env
     expose:
@@ -86,6 +106,11 @@ services:
       - "80:80"
     networks: 
       - network_web_main
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
     volumes: 
       - ./nginx.conf:/etc/nginx/nginx.conf
       - ./${PROJECT_NAME}/media:/web/${PROJECT_NAME}/media
@@ -94,19 +119,23 @@ services:
       - /etc/localtime:/etc/localtime:ro
 
   redis:
-      image: redis
-      hostname: ${REDIS_HOST}
-      container_name: redis_account
-      command: redis-server --requirepass ${REDIS_PASSWORD} --port ${REDIS_PORT}
-      restart: on-failure
-      environment:
-        REDIS_PASSWORD: ${REDIS_PASSWORD}
-        REDIS_PORT: ${REDIS_PORT}
-      volumes:
-        - ./redis.conf:/usr/local/etc/redis.conf
-      networks:
-        - network_web_main
-
+    image: redis
+    hostname: redis
+    container_name: redis_account
+    command: redis-server --requirepass ${REDIS_PASSWORD} --port ${REDIS_PORT}
+    restart: on-failure
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD}
+      REDIS_PORT: ${REDIS_PORT}
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD}", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    volumes:
+      - ./redis.conf:/usr/local/etc/redis/redis.conf
+    networks:
+      - network_web_main
 
 networks:
   network_web_main:
